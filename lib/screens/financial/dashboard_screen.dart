@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../services/supabase_service.dart';
+import '../../models/account_model.dart';
+import '../../models/transaction_model.dart';
 
 class FinancialDashboard extends StatefulWidget {
   final String userId;
@@ -12,11 +15,54 @@ class FinancialDashboard extends StatefulWidget {
 class _FinancialDashboardState extends State<FinancialDashboard> {
   late PageController _pageController;
   int _currentPage = 0;
+  final SupabaseService _supabaseService = SupabaseService();
+
+  late Future<List<Account>> _accountsFuture;
+  late Future<List<Transaction>> _transactionsFuture;
+  late Future<Map<String, dynamic>> _monthlyStatsFuture;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _loadData();
+  }
+
+  void _loadData() {
+    _accountsFuture = _supabaseService.getAccountsByUserId(widget.userId);
+    _transactionsFuture = _supabaseService.getTransactionsByUserId(
+      widget.userId,
+      limit: 5,
+    );
+    _monthlyStatsFuture = _getMonthlyStats();
+  }
+
+  Future<Map<String, dynamic>> _getMonthlyStats() async {
+    try {
+      final transactions = await _supabaseService.getTransactionsByUserId(
+        widget.userId,
+      );
+
+      final now = DateTime.now();
+
+      double income = 0, expenses = 0;
+
+      for (var tx in transactions) {
+        if (tx.transactionDate.month == now.month &&
+            tx.transactionDate.year == now.year) {
+          if (tx.type == 'income') {
+            income += tx.amount;
+          } else {
+            expenses += tx.amount;
+          }
+        }
+      }
+
+      return {'income': income, 'expenses': expenses};
+    } catch (e) {
+      print('Error calculating monthly stats: $e');
+      return {'income': 0.0, 'expenses': 0.0};
+    }
   }
 
   @override
@@ -51,57 +97,82 @@ class _FinancialDashboardState extends State<FinancialDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Account Summary Cards
-            SizedBox(
-              height: 200,
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() => _currentPage = index);
-                },
-                itemCount: 3, // Number of accounts
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: AccountCard(
-                      accountName: [
-                        'Business Account',
-                        'Savings',
-                        'Credit Card',
-                      ][index],
-                      balance: [5250.50, 12300.00, 2500.00][index],
-                      accountType: ['Checking', 'Savings', 'Credit'][index],
-                      isActive: index != 2,
-                    ),
+            // Account Summary Cards - Real Data
+            FutureBuilder<List<Account>>(
+              future: _accountsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return SizedBox(
+                    height: 200,
+                    child: Center(child: CircularProgressIndicator()),
                   );
-                },
-              ),
+                }
+
+                if (snapshot.hasError ||
+                    !snapshot.hasData ||
+                    snapshot.data!.isEmpty) {
+                  return SizedBox(
+                    height: 200,
+                    child: Center(child: Text('No accounts yet')),
+                  );
+                }
+
+                final accounts = snapshot.data!;
+                return SizedBox(
+                  height: 200,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      setState(() => _currentPage = index);
+                    },
+                    itemCount: accounts.length,
+                    itemBuilder: (context, index) {
+                      final account = accounts[index];
+                      return Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: AccountCard(
+                          accountName: account.accountName,
+                          balance: account.balance,
+                          accountType: account.accountType,
+                          isActive: account.isActive,
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 16),
 
             // Page Indicators
-            Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  3,
-                  (index) => Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: _currentPage == index ? 24 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _currentPage == index
-                          ? Colors.blue
-                          : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(4),
+            FutureBuilder<List<Account>>(
+              future: _accountsFuture,
+              builder: (context, snapshot) {
+                final count = snapshot.data?.length ?? 0;
+                return Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      count,
+                      (index) => Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: _currentPage == index ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _currentPage == index
+                              ? Colors.blue
+                              : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
             const SizedBox(height: 24),
 
-            // Quick Stats Section
+            // Quick Stats Section - Real Data
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -112,33 +183,62 @@ class _FinancialDashboardState extends State<FinancialDashboard> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: StatCard(
-                          icon: Icons.arrow_upward,
-                          iconColor: Colors.green,
-                          label: 'Income',
-                          amount: '\$4,500.00',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: StatCard(
-                          icon: Icons.arrow_downward,
-                          iconColor: Colors.red,
-                          label: 'Expenses',
-                          amount: '\$2,150.25',
-                        ),
-                      ),
-                    ],
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _monthlyStatsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 80,
+                                color: Colors.grey[200],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Container(
+                                height: 80,
+                                color: Colors.grey[200],
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      final stats =
+                          snapshot.data ?? {'income': 0.0, 'expenses': 0.0};
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: StatCard(
+                              icon: Icons.arrow_upward,
+                              iconColor: Colors.green,
+                              label: 'Income',
+                              amount:
+                                  '\$${(stats['income'] as double).toStringAsFixed(2)}',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: StatCard(
+                              icon: Icons.arrow_downward,
+                              iconColor: Colors.red,
+                              label: 'Expenses',
+                              amount:
+                                  '\$${(stats['expenses'] as double).toStringAsFixed(2)}',
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // Expense by Category Section
+            // Expense by Category Section - Real Data
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -149,39 +249,79 @@ class _FinancialDashboardState extends State<FinancialDashboard> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  CategoryExpenseItem(
-                    icon: '🍔',
-                    category: 'Food & Dining',
-                    amount: '\$450.00',
-                    percentage: 35,
-                  ),
-                  const SizedBox(height: 8),
-                  CategoryExpenseItem(
-                    icon: '🚗',
-                    category: 'Transportation',
-                    amount: '\$320.00',
-                    percentage: 25,
-                  ),
-                  const SizedBox(height: 8),
-                  CategoryExpenseItem(
-                    icon: '🎮',
-                    category: 'Entertainment',
-                    amount: '\$280.00',
-                    percentage: 22,
-                  ),
-                  const SizedBox(height: 8),
-                  CategoryExpenseItem(
-                    icon: '💳',
-                    category: 'Shopping',
-                    amount: '\$150.00',
-                    percentage: 12,
+                  FutureBuilder<List<Transaction>>(
+                    future: _transactionsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return SizedBox(
+                          height: 150,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      if (snapshot.hasError ||
+                          !snapshot.hasData ||
+                          snapshot.data!.isEmpty) {
+                        return SizedBox(
+                          height: 100,
+                          child: Center(child: Text('No spending data')),
+                        );
+                      }
+
+                      // Group by category and sum
+                      final Map<String, double> categoryTotals = {};
+                      for (var tx in snapshot.data!) {
+                        if (tx.type == 'expense') {
+                          final cat = tx.categoryId ?? 'Uncategorized';
+                          categoryTotals[cat] =
+                              (categoryTotals[cat] ?? 0) + tx.amount;
+                        }
+                      }
+
+                      final sortedCategories = categoryTotals.entries.toList()
+                        ..sort((a, b) => b.value.compareTo(a.value));
+
+                      final total = categoryTotals.values.fold<double>(
+                        0,
+                        (a, b) => a + b,
+                      );
+
+                      return Column(
+                        children: List.generate(
+                          sortedCategories.length > 4
+                              ? 4
+                              : sortedCategories.length,
+                          (index) {
+                            final entry = sortedCategories[index];
+                            final percentage =
+                                (entry.value / (total > 0 ? total : 1) * 100)
+                                    .toStringAsFixed(0);
+                            return Column(
+                              children: [
+                                CategoryExpenseItem(
+                                  icon: _getIconForCategory(entry.key),
+                                  category: entry.key,
+                                  amount: '\$${entry.value.toStringAsFixed(2)}',
+                                  percentage: double.parse(percentage),
+                                ),
+                                if (index <
+                                    (sortedCategories.length > 4
+                                        ? 3
+                                        : sortedCategories.length - 1))
+                                  const SizedBox(height: 8),
+                              ],
+                            );
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // Recent Transactions
+            // Recent Transactions - Real Data
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -206,31 +346,51 @@ class _FinancialDashboardState extends State<FinancialDashboard> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  TransactionItem(
-                    icon: '🍔',
-                    title: 'McDonald\'s',
-                    subtitle: 'Food & Dining',
-                    amount: '-\$12.50',
-                    isExpense: true,
-                    date: 'Today',
-                  ),
-                  const SizedBox(height: 8),
-                  TransactionItem(
-                    icon: '💰',
-                    title: 'Salary Deposit',
-                    subtitle: 'Income',
-                    amount: '+\$3,500.00',
-                    isExpense: false,
-                    date: 'Yesterday',
-                  ),
-                  const SizedBox(height: 8),
-                  TransactionItem(
-                    icon: '⛽',
-                    title: 'Gas Station',
-                    subtitle: 'Transportation',
-                    amount: '-\$45.00',
-                    isExpense: true,
-                    date: '2 days ago',
+                  FutureBuilder<List<Transaction>>(
+                    future: _transactionsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return SizedBox(
+                          height: 100,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      if (snapshot.hasError ||
+                          !snapshot.hasData ||
+                          snapshot.data!.isEmpty) {
+                        return SizedBox(
+                          height: 100,
+                          child: Center(child: Text('No transactions yet')),
+                        );
+                      }
+
+                      final transactions = snapshot.data!;
+                      return Column(
+                        children: List.generate(transactions.length, (index) {
+                          final tx = transactions[index];
+                          final isExpense = tx.type == 'expense';
+                          final amountStr = isExpense
+                              ? '-\$${tx.amount.toStringAsFixed(2)}'
+                              : '+\$${tx.amount.toStringAsFixed(2)}';
+
+                          return Column(
+                            children: [
+                              TransactionItem(
+                                icon: _getIconForCategory(tx.description ?? ''),
+                                title: tx.description ?? 'Transaction',
+                                subtitle: tx.categoryId ?? 'Uncategorized',
+                                amount: amountStr,
+                                isExpense: isExpense,
+                                date: _formatDate(tx.transactionDate),
+                              ),
+                              if (index < transactions.length - 1)
+                                const SizedBox(height: 8),
+                            ],
+                          );
+                        }),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -269,6 +429,44 @@ class _FinancialDashboardState extends State<FinancialDashboard> {
         ),
       ),
     );
+  }
+
+  String _getIconForCategory(String category) {
+    final lower = category.toLowerCase();
+    if (lower.contains('food') || lower.contains('restaurant')) return '🍔';
+    if (lower.contains('transport') ||
+        lower.contains('gas') ||
+        lower.contains('car'))
+      return '🚗';
+    if (lower.contains('entertain') ||
+        lower.contains('movie') ||
+        lower.contains('game'))
+      return '🎮';
+    if (lower.contains('shop') || lower.contains('clothing')) return '💳';
+    if (lower.contains('salary') || lower.contains('income')) return '💰';
+    if (lower.contains('utility') || lower.contains('electricity')) return '⚡';
+    if (lower.contains('health') || lower.contains('medical')) return '🏥';
+    return '📝';
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final yesterday = DateTime.now().subtract(Duration(days: 1));
+
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      return 'Today';
+    } else if (date.year == yesterday.year &&
+        date.month == yesterday.month &&
+        date.day == yesterday.day) {
+      return 'Yesterday';
+    } else {
+      final daysAgo = now.difference(date).inDays;
+      if (daysAgo == 1) return '1 day ago';
+      if (daysAgo < 30) return '$daysAgo days ago';
+      return date.toString().split(' ')[0];
+    }
   }
 }
 

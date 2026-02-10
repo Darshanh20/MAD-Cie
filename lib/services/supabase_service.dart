@@ -22,24 +22,27 @@ class SupabaseService {
 
   // ==================== AUTH QUERIES ====================
 
-  /// Sign up new user
+  /// Sign up new user (simple email/password, no auth)
   Future<AppUser> signUp(String email, String password, String fullName) async {
     try {
-      final response = await client.auth.signUp(
-        email: email,
-        password: password,
-        data: {'full_name': fullName},
-      );
+      // Generate UUID for user
+      final userId = _generateUUID();
 
-      if (response.user == null) throw Exception('Sign up failed');
-
-      // Return user from auth response (no need to insert into users table)
       final user = AppUser(
-        id: response.user!.id,
+        id: userId,
         email: email,
         fullName: fullName,
-        createdAt: DateTime.parse(response.user!.createdAt),
+        createdAt: DateTime.now(),
       );
+
+      // Store in users table with password
+      await client.from('users').insert({
+        'id': userId,
+        'email': email,
+        'password': password,
+        'full_name': fullName,
+        'created_at': DateTime.now().toIso8601String(),
+      });
 
       return user;
     } catch (e) {
@@ -48,52 +51,51 @@ class SupabaseService {
     }
   }
 
-  /// Login user
+  /// Generate a simple UUID
+  String _generateUUID() {
+    return DateTime.now().millisecondsSinceEpoch.toString();
+  }
+
+  /// Login user (simple email/password check)
   Future<AppUser> login(String email, String password) async {
     try {
-      final response = await client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+      // Query users table for matching email/password
+      final response = await client
+          .from('users')
+          .select()
+          .eq('email', email)
+          .eq('password', password)
+          .single();
 
-      if (response.user == null) throw Exception('Login failed');
-
-      // Return user from auth response
       final user = AppUser(
-        id: response.user!.id,
-        email: response.user!.email ?? email,
-        fullName: response.user!.userMetadata?['full_name'] ?? 'User',
-        createdAt: DateTime.parse(response.user!.createdAt),
+        id: response['id'] as String,
+        email: response['email'] as String,
+        fullName: response['full_name'] as String,
+        createdAt: DateTime.parse(response['created_at'] as String),
       );
 
       return user;
     } catch (e) {
       print('Error logging in: $e');
-      rethrow;
+      throw Exception('Invalid email or password');
     }
   }
 
-  /// Logout
+  /// Logout (no-op for simple auth)
   Future<void> logout() async {
     try {
-      await client.auth.signOut();
+      // Simple logout - just clear session
+      print('User logged out');
     } catch (e) {
       print('Error logging out: $e');
       rethrow;
     }
   }
 
-  /// Get current user
+  /// Get current user (no-op for simple auth)
   AppUser? getCurrentUser() {
-    final user = client.auth.currentUser;
-    return user != null
-        ? AppUser(
-            id: user.id,
-            email: user.email ?? '',
-            fullName: user.userMetadata?['full_name'] ?? 'User',
-            createdAt: DateTime.parse(user.createdAt),
-          )
-        : null;
+    // Without proper auth, return null
+    return null;
   }
 
   // ==================== USER QUERIES ====================
@@ -101,17 +103,17 @@ class SupabaseService {
   /// Get user profile
   Future<AppUser> getUserProfile(String userId) async {
     try {
-      // Get user profile from auth
-      final user = client.auth.currentUser;
-      if (user == null || user.id != userId) {
-        throw Exception('User not authenticated or user ID mismatch');
-      }
+      final response = await client
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .single();
 
       return AppUser(
-        id: user.id,
-        email: user.email ?? '',
-        fullName: user.userMetadata?['full_name'] ?? 'User',
-        createdAt: DateTime.parse(user.createdAt),
+        id: response['id'] as String,
+        email: response['email'] as String,
+        fullName: response['full_name'] as String,
+        createdAt: DateTime.parse(response['created_at'] as String),
       );
     } catch (e) {
       print('Error fetching user profile: $e');
@@ -126,15 +128,12 @@ class SupabaseService {
     String? profileImage,
   }) async {
     try {
-      // Update auth user metadata
-      await client.auth.updateUser(
-        UserAttributes(
-          data: {
-            'full_name': fullName,
-            if (profileImage != null) 'profile_image': profileImage,
-          },
-        ),
-      );
+      final updateData = {
+        'full_name': fullName,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      await client.from('users').update(updateData).eq('id', userId);
     } catch (e) {
       print('Error updating user profile: $e');
       rethrow;
