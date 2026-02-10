@@ -1,0 +1,277 @@
+# ==================== ENVIRONMENT & SECRETS ====================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# ==================== IDE & EDITOR ====================
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+.code-workspace
+
+# IntelliJ
+*.iml
+*.ipr
+*.iws
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Android Studio
+/android/.gradle/
+/android/.idea/
+/android/local.properties
+
+# Xcode
+*.pbxuser
+*.perspectivev3
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM/
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+Session.vim
+.exrc
+
+# Emacs
+*~
+TAGS
+!TAGS/
+tags
+!tags/
+gtags.files
+GTAGS
+GRTAGS
+GPATH
+cscope.files
+cscope.out
+cscope.in.out
+SCOP
+.#*
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ==================== FLUTTER & DART ====================
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+/coverage/
+.flutter/
+
+# Generated files
+lib/config/env.dart
+lib/generated_plugin_registrant.dart
+
+# Symbolication related
+app.*.symbols
+*.map
+
+# Obfuscation related
+app.*.map.json
+obfuscated/
+
+# ==================== ANDROID ====================
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/android/app/outputs/
+/android/.gradle/
+/android/local.properties
+/android/key.properties
+/android/gradlew
+/android/gradlew.bat
+/android/.idea/
+/android/app/.cxx/
+.android/
+android/key.jks
+android/*.jks
+
+# ==================== IOS ====================
+/ios/Flutter/flutter_export_environment.sh
+/ios/Flutter/.last_build_id
+/ios/Pods/
+/ios/Podfile.lock
+/ios/.symlinks/
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Flutter.podspec
+Podfile.lock
+
+# ==================== MACOS ====================
+/macos/Flutter/Flutter-Release.xcconfig
+/macos/Flutter/GeneratedPluginRegistrant.swift
+/macos/Pods/
+/macos/Podfile.lock
+
+# ==================== WINDOWS ====================
+/windows/flutter/generated_plugins.cmake
+/windows/flutter/generated_file_list.txt
+/windows/flutter/generated_files.cmake
+/windows/flutter/flutter_codegeneration.stamp
+
+# ==================== LINUX ====================
+/linux/flutter/generated_plugins.cmake
+/linux/flutter/generated_file_list.txt
+/linux/flutter/generated_files.cmake
+
+# ==================== WEB ====================
+/web/generated_plugin_registrant.dart
+/web/plugins/
+/.dart_tool/
+
+# ==================== SUPABASE & DATABASE ====================
+# Supabase
+.supabase/
+supabase/docker-compose.yml
+supabase/.env
+supabase/.env.local
+supabase/seed/
+
+# Firebase (if used)
+.firebase/
+firebase-debug.log
+google-services.json
+GoogleService-Info.plist
+
+# ==================== BUILD ARTIFACTS ====================
+build/
+dist/
+release/
+*.apk
+*.aab
+*.deb
+*.dmg
+*.exe
+*.msi
+*.rpm
+*.zip
+
+# ==================== DOCUMENTATION ====================
+docs/_build/
+docs/.doctrees/
+site/
+.sphinx/
+
+# ==================== DEPENDENCIES ====================
+.pub/
+pubspec.lock
+pubspec_overrides.yaml
+pubspec.yaml.lock
+
+# Node modules (if using any Dart/JS interop)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# ==================== TESTING ====================
+.test_coverage_badge/
+coverage/
+.nyc_output/
+.coverage/
+
+# ==================== LOGS ====================
+*.log
+*.logs
+debug.log
+error.log
+
+# ==================== TEMPORARY FILES ====================
+*.tmp
+*.temp
+tmp/
+temp/
+*.bak
+*.backup
+*~
+.DS_Store
+Thumbs.db
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# ==================== DATABASE ====================
+*.db
+*.sqlite
+*.sqlite3
+*.realm
+.realm.lock
+
+# ==================== CACHE ====================
+.cache/
+.next/
+.turbo/
+dist/
+out/
+.venv/
+venv/
+env/
+ENV/
+
+# ==================== OUTPUT FILES ====================
+output/
+outputs/
+results/
+reports/
+
+# ==================== MISC ====================
+.env.*.local.php
+*.class
+*.pyc
+*.swp
+*.swp
+*.swo
+*~
+.atom/
+.build/
+.buildlog/
+.history
+.pub/
+.DS_Store
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.vscode
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+pubspec.lock
