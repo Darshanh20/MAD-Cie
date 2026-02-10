@@ -1,9 +1,12 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/user_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import '../models/user_model.dart' as user_model;
 import '../models/account_model.dart';
 import '../models/category_model.dart';
 import '../models/transaction_model.dart';
 import '../models/budget_model.dart';
+
+// Alias for clarity
+typedef AppUser = user_model.User;
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -32,7 +35,7 @@ class SupabaseService {
   // ==================== AUTH QUERIES ====================
 
   /// Sign up new user
-  Future<User> signUp(String email, String password, String fullName) async {
+  Future<AppUser> signUp(String email, String password, String fullName) async {
     try {
       final response = await _client.auth.signUp(
         email: email,
@@ -42,7 +45,7 @@ class SupabaseService {
 
       if (response.user == null) throw Exception('Sign up failed');
 
-      final user = User(
+      final user = AppUser(
         id: response.user!.id,
         email: email,
         fullName: fullName,
@@ -60,7 +63,7 @@ class SupabaseService {
   }
 
   /// Login user
-  Future<User> login(String email, String password) async {
+  Future<AppUser> login(String email, String password) async {
     try {
       final response = await _client.auth.signInWithPassword(
         email: email,
@@ -75,7 +78,7 @@ class SupabaseService {
           .eq('id', response.user!.id)
           .single();
 
-      return User.fromJson(userData);
+      return AppUser.fromJson(userData);
     } catch (e) {
       print('Error logging in: $e');
       rethrow;
@@ -93,14 +96,14 @@ class SupabaseService {
   }
 
   /// Get current user
-  User? getCurrentUser() {
+  AppUser? getCurrentUser() {
     final user = _client.auth.currentUser;
     return user != null
-        ? User(
+        ? AppUser(
             id: user.id,
             email: user.email ?? '',
             fullName: user.userMetadata?['full_name'] ?? 'User',
-            createdAt: user.createdAt,
+            createdAt: DateTime.parse(user.createdAt),
           )
         : null;
   }
@@ -108,14 +111,14 @@ class SupabaseService {
   // ==================== USER QUERIES ====================
 
   /// Get user profile
-  Future<User> getUserProfile(String userId) async {
+  Future<AppUser> getUserProfile(String userId) async {
     try {
       final data = await _client
           .from('users')
           .select()
           .eq('id', userId)
           .single();
-      return User.fromJson(data);
+      return AppUser.fromJson(data);
     } catch (e) {
       print('Error fetching user profile: $e');
       rethrow;

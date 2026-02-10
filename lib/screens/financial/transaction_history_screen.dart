@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../models/transaction_model.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
   final String userId;
@@ -13,7 +12,6 @@ class TransactionHistoryScreen extends StatefulWidget {
 
 class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   String _selectedFilter = 'All';
-  String _sortBy = 'Date';
   final List<String> filterOptions = ['All', 'Income', 'Expense', 'Transfer'];
 
   @override

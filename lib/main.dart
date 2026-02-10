@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'routes/app_routes.dart';
-import 'services/database_migration.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,18 +14,7 @@ Future<void> main() async {
     );
     print('✅ Supabase initialized successfully');
 
-    // Initialize database migration service
-    final migration = DatabaseMigration();
-    await migration.initialize();
-    print('✅ Database migration service initialized');
-
-    // Test connection
-    final connected = await migration.testConnection();
-    if (connected) {
-      print('✅ Database connection successful');
-    } else {
-      print('⚠️ Database connection failed - tables may not exist yet');
-    }
+    print('✅ Supabase service ready to use');
   } catch (e) {
     print('❌ Error during initialization: $e');
   }
