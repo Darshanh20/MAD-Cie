@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/supabase_service.dart' as supabase_service;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +13,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  late final supabase_service.SupabaseService _supabaseService;
+
+  @override
+  void initState() {
+    super.initState();
+    _supabaseService = supabase_service.SupabaseService();
+  }
 
   @override
   void dispose() {
@@ -20,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  void _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -33,13 +41,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulate login delay
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      final user = await _supabaseService.login(email, password);
+
       if (mounted) {
         setState(() => _isLoading = false);
-        Navigator.of(context).pushReplacementNamed('/home');
+        // Navigate to financial app with userId
+        Navigator.of(
+          context,
+        ).pushReplacementNamed('/financial-app', arguments: user.id);
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

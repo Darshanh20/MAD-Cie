@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/supabase_service.dart' as supabase_service;
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -16,6 +17,13 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
   bool _agreedToTerms = false;
+  late final supabase_service.SupabaseService _supabaseService;
+
+  @override
+  void initState() {
+    super.initState();
+    _supabaseService = supabase_service.SupabaseService();
+  }
 
   @override
   void dispose() {
@@ -26,7 +34,7 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _handleSignup() {
+  void _handleSignup() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -62,8 +70,9 @@ class _SignupScreenState extends State<SignupScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulate signup delay
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      final user = await _supabaseService.signUp(email, password, name);
+
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,11 +81,27 @@ class _SignupScreenState extends State<SignupScreen> {
             duration: Duration(seconds: 2),
           ),
         );
+
+        // Navigate directly to financial app with userId
         Future.delayed(const Duration(seconds: 1), () {
-          Navigator.of(context).pushReplacementNamed('/login');
+          if (mounted) {
+            Navigator.of(
+              context,
+            ).pushReplacementNamed('/financial-app', arguments: user.id);
+          }
         });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign up failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

@@ -10,7 +10,6 @@ typedef AppUser = user_model.User;
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
-  late SupabaseClient _client;
 
   SupabaseService._internal();
 
@@ -18,26 +17,15 @@ class SupabaseService {
     return _instance;
   }
 
-  SupabaseClient get client => _client;
-
-  /// Initialize Supabase
-  Future<void> initialize(String supabaseUrl, String supabaseAnonKey) async {
-    try {
-      await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
-      _client = Supabase.instance.client;
-      print('Supabase initialized successfully');
-    } catch (e) {
-      print('Error initializing Supabase: $e');
-      rethrow;
-    }
-  }
+  /// Get Supabase client (already initialized in main.dart)
+  SupabaseClient get client => Supabase.instance.client;
 
   // ==================== AUTH QUERIES ====================
 
   /// Sign up new user
   Future<AppUser> signUp(String email, String password, String fullName) async {
     try {
-      final response = await _client.auth.signUp(
+      final response = await client.auth.signUp(
         email: email,
         password: password,
         data: {'full_name': fullName},
@@ -45,15 +33,13 @@ class SupabaseService {
 
       if (response.user == null) throw Exception('Sign up failed');
 
+      // Return user from auth response (no need to insert into users table)
       final user = AppUser(
         id: response.user!.id,
         email: email,
         fullName: fullName,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.parse(response.user!.createdAt),
       );
-
-      // Insert user into users table
-      await _client.from('users').insert(user.toJson());
 
       return user;
     } catch (e) {
@@ -65,20 +51,22 @@ class SupabaseService {
   /// Login user
   Future<AppUser> login(String email, String password) async {
     try {
-      final response = await _client.auth.signInWithPassword(
+      final response = await client.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
       if (response.user == null) throw Exception('Login failed');
 
-      final userData = await _client
-          .from('users')
-          .select()
-          .eq('id', response.user!.id)
-          .single();
+      // Return user from auth response
+      final user = AppUser(
+        id: response.user!.id,
+        email: response.user!.email ?? email,
+        fullName: response.user!.userMetadata?['full_name'] ?? 'User',
+        createdAt: DateTime.parse(response.user!.createdAt),
+      );
 
-      return AppUser.fromJson(userData);
+      return user;
     } catch (e) {
       print('Error logging in: $e');
       rethrow;
@@ -88,7 +76,7 @@ class SupabaseService {
   /// Logout
   Future<void> logout() async {
     try {
-      await _client.auth.signOut();
+      await client.auth.signOut();
     } catch (e) {
       print('Error logging out: $e');
       rethrow;
@@ -97,7 +85,7 @@ class SupabaseService {
 
   /// Get current user
   AppUser? getCurrentUser() {
-    final user = _client.auth.currentUser;
+    final user = client.auth.currentUser;
     return user != null
         ? AppUser(
             id: user.id,
@@ -113,12 +101,18 @@ class SupabaseService {
   /// Get user profile
   Future<AppUser> getUserProfile(String userId) async {
     try {
-      final data = await _client
-          .from('users')
-          .select()
-          .eq('id', userId)
-          .single();
-      return AppUser.fromJson(data);
+      // Get user profile from auth
+      final user = client.auth.currentUser;
+      if (user == null || user.id != userId) {
+        throw Exception('User not authenticated or user ID mismatch');
+      }
+
+      return AppUser(
+        id: user.id,
+        email: user.email ?? '',
+        fullName: user.userMetadata?['full_name'] ?? 'User',
+        createdAt: DateTime.parse(user.createdAt),
+      );
     } catch (e) {
       print('Error fetching user profile: $e');
       rethrow;
@@ -132,14 +126,15 @@ class SupabaseService {
     String? profileImage,
   }) async {
     try {
-      await _client
-          .from('users')
-          .update({
+      // Update auth user metadata
+      await client.auth.updateUser(
+        UserAttributes(
+          data: {
             'full_name': fullName,
             if (profileImage != null) 'profile_image': profileImage,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', userId);
+          },
+        ),
+      );
     } catch (e) {
       print('Error updating user profile: $e');
       rethrow;
@@ -172,7 +167,7 @@ class SupabaseService {
         createdAt: DateTime.now(),
       );
 
-      await _client.from('accounts').insert(account.toJson());
+      await client.from('accounts').insert(account.toJson());
       return account;
     } catch (e) {
       print('Error creating account: $e');
@@ -183,7 +178,7 @@ class SupabaseService {
   /// Get all accounts for user
   Future<List<Account>> getAccountsByUserId(String userId) async {
     try {
-      final data = await _client
+      final data = await client
           .from('accounts')
           .select()
           .eq('user_id', userId)
@@ -199,7 +194,7 @@ class SupabaseService {
   /// Get single account
   Future<Account> getAccountById(String accountId) async {
     try {
-      final data = await _client
+      final data = await client
           .from('accounts')
           .select()
           .eq('id', accountId)
@@ -214,7 +209,7 @@ class SupabaseService {
   /// Update account balance
   Future<void> updateAccountBalance(String accountId, double newBalance) async {
     try {
-      await _client
+      await client
           .from('accounts')
           .update({
             'balance': newBalance,
@@ -230,7 +225,7 @@ class SupabaseService {
   /// Get total balance across all accounts
   Future<double> getTotalBalance(String userId) async {
     try {
-      final data = await _client
+      final data = await client
           .from('accounts')
           .select('balance')
           .eq('user_id', userId)
@@ -271,7 +266,7 @@ class SupabaseService {
         createdAt: DateTime.now(),
       );
 
-      await _client.from('categories').insert(category.toJson());
+      await client.from('categories').insert(category.toJson());
       return category;
     } catch (e) {
       print('Error creating category: $e');
@@ -285,7 +280,7 @@ class SupabaseService {
     String? type,
   }) async {
     try {
-      var query = _client
+      var query = client
           .from('categories')
           .select()
           .eq('user_id', userId)
@@ -306,7 +301,7 @@ class SupabaseService {
   /// Delete category
   Future<void> deleteCategory(String categoryId) async {
     try {
-      await _client
+      await client
           .from('categories')
           .update({'is_active': false})
           .eq('id', categoryId);
@@ -353,7 +348,7 @@ class SupabaseService {
         createdAt: DateTime.now(),
       );
 
-      await _client.from('transactions').insert(transaction.toJson());
+      await client.from('transactions').insert(transaction.toJson());
 
       // Update account balance
       if (status == 'completed') {
@@ -378,7 +373,7 @@ class SupabaseService {
     int offset = 0,
   }) async {
     try {
-      final data = await _client
+      final data = await client
           .from('transactions')
           .select()
           .eq('account_id', accountId)
@@ -399,7 +394,7 @@ class SupabaseService {
     int offset = 0,
   }) async {
     try {
-      final data = await _client
+      final data = await client
           .from('transactions')
           .select()
           .eq('user_id', userId)
@@ -420,7 +415,7 @@ class SupabaseService {
     DateTime endDate,
   ) async {
     try {
-      final data = await _client
+      final data = await client
           .from('transactions')
           .select()
           .eq('user_id', userId)
@@ -441,7 +436,7 @@ class SupabaseService {
     int limit = 50,
   }) async {
     try {
-      final data = await _client
+      final data = await client
           .from('transactions')
           .select()
           .eq('category_id', categoryId)
@@ -464,7 +459,7 @@ class SupabaseService {
       final startDate = DateTime(month.year, month.month, 1);
       final endDate = DateTime(month.year, month.month + 1, 0);
 
-      final data = await _client
+      final data = await client
           .from('transactions')
           .select('category_id, amount')
           .eq('user_id', userId)
@@ -491,7 +486,7 @@ class SupabaseService {
       final startDate = DateTime(month.year, month.month, 1);
       final endDate = DateTime(month.year, month.month + 1, 0);
 
-      final data = await _client
+      final data = await client
           .from('transactions')
           .select('amount')
           .eq('user_id', userId)
@@ -517,10 +512,7 @@ class SupabaseService {
   ) async {
     try {
       updates['updated_at'] = DateTime.now().toIso8601String();
-      await _client
-          .from('transactions')
-          .update(updates)
-          .eq('id', transactionId);
+      await client.from('transactions').update(updates).eq('id', transactionId);
     } catch (e) {
       print('Error updating transaction: $e');
       rethrow;
@@ -530,7 +522,7 @@ class SupabaseService {
   /// Delete transaction
   Future<void> deleteTransaction(String transactionId) async {
     try {
-      await _client.from('transactions').delete().eq('id', transactionId);
+      await client.from('transactions').delete().eq('id', transactionId);
     } catch (e) {
       print('Error deleting transaction: $e');
       rethrow;
@@ -562,7 +554,7 @@ class SupabaseService {
         createdAt: DateTime.now(),
       );
 
-      await _client.from('budgets').insert(budget.toJson());
+      await client.from('budgets').insert(budget.toJson());
       return budget;
     } catch (e) {
       print('Error creating budget: $e');
@@ -573,7 +565,7 @@ class SupabaseService {
   /// Get budgets by user
   Future<List<Budget>> getBudgetsByUserId(String userId) async {
     try {
-      final data = await _client
+      final data = await client
           .from('budgets')
           .select()
           .eq('user_id', userId)
@@ -589,7 +581,7 @@ class SupabaseService {
   /// Update budget spent amount
   Future<void> updateBudgetSpent(String budgetId, double amount) async {
     try {
-      await _client
+      await client
           .from('budgets')
           .update({
             'spent': amount,
@@ -613,7 +605,7 @@ class SupabaseService {
       final startDate = DateTime(month.year, month.month, 1);
       final endDate = DateTime(month.year, month.month + 1, 0);
 
-      final data = await _client.rpc(
+      final data = await client.rpc(
         'get_spending_insights',
         params: {
           'p_user_id': userId,

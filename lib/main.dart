@@ -10,7 +10,7 @@ Future<void> main() async {
     await Supabase.initialize(
       url: 'https://lmxpykolgesjxkyruswi.supabase.co',
       anonKey:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxteHB5a29sZ2VzanhreXJ1c3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0MzUwMTcsImV4cCI6MjA1MDAxMTAxN30.6pGZ4ZhY6NivOctk4V-RCfT-TZ6N4FqJ6wAGl5w59VI',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxteHB5a29sZ2VzanhreXJ1c3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MDI1MzIsImV4cCI6MjA4NjI3ODUzMn0.0SVpLg-EXol83AWfnbhQDPniXzbblcD42wvMpxcirM4',
     );
     print('✅ Supabase initialized successfully');
 
